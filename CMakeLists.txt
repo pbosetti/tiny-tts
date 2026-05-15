@@ -16,6 +16,7 @@ target_include_directories(tiny_tts
 
 target_sources(tiny_tts
   PRIVATE
+    src/cli_options.cpp
     src/text_frontend.cpp
     src/wav_writer.cpp)
 
@@ -46,3 +47,8 @@ target_include_directories(text_frontend_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DI
 target_compile_definitions(text_frontend_smoke PRIVATE TINY_TTS_SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 target_link_libraries(text_frontend_smoke PRIVATE tiny_tts)
 add_test(NAME text_frontend_smoke COMMAND text_frontend_smoke)
+
+add_executable(cli_options_test tests/cli_options_test.cpp)
+target_include_directories(cli_options_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(cli_options_test PRIVATE tiny_tts)
+add_test(NAME cli_options_test COMMAND cli_options_test)

@@ -7,15 +7,17 @@
 namespace tiny_tts {
 
 struct SynthesisOptions {
+  std::string speaker{"MALE"};
+  std::string device{"cuda"};
   float noise_scale{0.667f};
   float noise_scale_w{0.8f};
   float speed{1.0f};
-  std::int64_t speaker_id{0};
 };
 
 class TinyTTS {
  public:
-  explicit TinyTTS(std::string model_dir, std::string cmudict_path = {});
+  explicit TinyTTS(std::string model_dir = "onnx", std::string cmudict_path = {},
+                   std::string device = "cuda");
   ~TinyTTS();
   TinyTTS(const TinyTTS&) = delete;
   TinyTTS& operator=(const TinyTTS&) = delete;
@@ -27,6 +29,7 @@ class TinyTTS {
 
   void synthesize_to_file(const std::string& text, const std::string& output_path,
                           const SynthesisOptions& options = {}) const;
+  std::vector<std::string> available_speakers() const;
 
  private:
   class Impl;

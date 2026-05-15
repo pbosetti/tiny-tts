@@ -31,13 +31,17 @@ cmake --build build -j
 ## Run
 
 ```bash
-./build/tiny-tts-cli "Hello world from tiny tts" output.wav onnx
+./build/tiny-tts-cli --text "Hello world from tiny tts" --output output.wav --checkpoint onnx --speaker MALE --speed 1.0 --device cpu
 ```
 
-Arguments:
-1. text input
-2. output wav path (optional, default: `output.wav`)
-3. ONNX model directory (optional, default: `onnx`)
+CLI options (semantically aligned with the previous Python CLI):
+
+- `-t, --text`: text input (default sentence is provided)
+- `-c, --checkpoint`: ONNX model directory
+- `-o, --output`: output WAV path
+- `-s, --speaker`: speaker name (`MALE`) or `all`
+- `--speed`: speech speed (`1.0` default)
+- `--device`: `cuda` or `cpu` device preference
 
 ## C++ API
 
@@ -45,7 +49,13 @@ Arguments:
 #include "tiny_tts/tiny_tts.hpp"
 
 tiny_tts::TinyTTS tts("onnx");
-tts.synthesize_to_file("Hello world", "output.wav");
+
+tiny_tts::SynthesisOptions opts;
+opts.speaker = "MALE";
+opts.speed = 1.0f;
+opts.device = "cpu";
+
+tts.synthesize_to_file("Hello world", "output.wav", opts);
 ```
 
 ## Notes and assumptions

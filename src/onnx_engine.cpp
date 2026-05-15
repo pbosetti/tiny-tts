@@ -8,6 +8,13 @@
 #include <numeric>
 #include <stdexcept>
 
+#if __has_include(<cuda_provider_factory.h>)
+#include <cuda_provider_factory.h>
+#define TINY_TTS_HAS_ORT_CUDA 1
+#else
+#define TINY_TTS_HAS_ORT_CUDA 0
+#endif
+
 namespace tiny_tts {
 namespace {
 
@@ -24,7 +31,7 @@ std::filesystem::path model_path(const std::string& model_dir, const char* model
 
 }  // namespace
 
-OnnxEngine::OnnxEngine(const std::string& model_dir)
+OnnxEngine::OnnxEngine(const std::string& model_dir, bool use_gpu)
     : env_(ORT_LOGGING_LEVEL_WARNING, "tiny_tts"),
       encoder_(nullptr),
       duration_predictor_(nullptr),
@@ -33,6 +40,13 @@ OnnxEngine::OnnxEngine(const std::string& model_dir)
       rng_(std::random_device{}()) {
   session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
   session_options_.SetIntraOpNumThreads(0);
+#if TINY_TTS_HAS_ORT_CUDA
+  if (use_gpu) {
+    OrtSessionOptionsAppendExecutionProvider_CUDA(session_options_, 0);
+  }
+#else
+  (void)use_gpu;
+#endif
 
   auto enc_path = model_path(model_dir, "text_encoder.onnx");
   auto dp_path = model_path(model_dir, "duration_predictor.onnx");

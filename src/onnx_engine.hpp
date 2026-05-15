@@ -22,7 +22,7 @@ struct OnnxInferenceInput {
 
 class OnnxEngine {
  public:
-  explicit OnnxEngine(const std::string& model_dir);
+  explicit OnnxEngine(const std::string& model_dir, bool use_gpu = false);
 
   std::vector<float> run(const OnnxInferenceInput& input) const;
 
