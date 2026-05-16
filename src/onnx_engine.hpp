@@ -31,10 +31,10 @@ class OnnxEngine {
 
   Ort::Env env_;
   Ort::SessionOptions session_options_;
-  Ort::Session encoder_;
-  Ort::Session duration_predictor_;
-  Ort::Session flow_;
-  Ort::Session decoder_;
+  mutable Ort::Session encoder_;
+  mutable Ort::Session duration_predictor_;
+  mutable Ort::Session flow_;
+  mutable Ort::Session decoder_;
   mutable std::mt19937 rng_;
 };
 

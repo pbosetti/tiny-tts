@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(tiny_tts LANGUAGES CXX)
 
 option(TINY_TTS_BUILD_INFERENCE "Build ONNX inference engine" ON)
+set(ONNXRUNTIME_ROOT "$ENV{ONNXRUNTIME_ROOT}" CACHE PATH
+    "Path to the ONNX Runtime installation root")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,11 +24,11 @@ target_sources(tiny_tts
 
 if(TINY_TTS_BUILD_INFERENCE)
   find_path(ONNXRUNTIME_INCLUDE_DIR onnxruntime_cxx_api.h
-    HINTS $ENV{ONNXRUNTIME_ROOT}
+    HINTS ${ONNXRUNTIME_ROOT} $ENV{ONNXRUNTIME_ROOT}
     PATH_SUFFIXES include include/onnxruntime)
 
   find_library(ONNXRUNTIME_LIBRARY onnxruntime
-    HINTS $ENV{ONNXRUNTIME_ROOT}
+    HINTS ${ONNXRUNTIME_ROOT} $ENV{ONNXRUNTIME_ROOT}
     PATH_SUFFIXES lib lib64)
 
   if(NOT ONNXRUNTIME_INCLUDE_DIR OR NOT ONNXRUNTIME_LIBRARY)

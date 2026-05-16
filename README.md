@@ -21,11 +21,51 @@
 
 Set `ONNXRUNTIME_ROOT` to your ONNX Runtime installation root (must contain `include/` and `lib/` or `lib64/`).
 
+## Install ONNX Runtime (tested in CI)
+
+The commands below match `.github/workflows/onnx-runtime-ci.yml`, which validates ONNX Runtime install, CMake configure, build, tests, and CLI startup on Linux x64, Windows x64, and macOS arm64.
+
+### Linux x64
+
+```bash
+export ORT_VERSION=1.26.0
+curl -LO "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz"
+tar -xzf "onnxruntime-linux-x64-${ORT_VERSION}.tgz"
+export ONNXRUNTIME_ROOT="$PWD/onnxruntime-linux-x64-${ORT_VERSION}"
+export LD_LIBRARY_PATH="${ONNXRUNTIME_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+```
+
+### Windows x64 (PowerShell)
+
+```powershell
+$env:ORT_VERSION = "1.26.0"
+Invoke-WebRequest -Uri "https://github.com/microsoft/onnxruntime/releases/download/v$env:ORT_VERSION/onnxruntime-win-x64-$env:ORT_VERSION.zip" -OutFile "onnxruntime-win-x64-$env:ORT_VERSION.zip"
+Expand-Archive -Path "onnxruntime-win-x64-$env:ORT_VERSION.zip" -DestinationPath . -Force
+$env:ONNXRUNTIME_ROOT = (Resolve-Path ".\onnxruntime-win-x64-$env:ORT_VERSION").Path
+$env:PATH = "$env:ONNXRUNTIME_ROOT\lib;$env:PATH"
+```
+
+### macOS arm64
+
+```bash
+export ORT_VERSION=1.26.0
+curl -LO "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-osx-arm64-${ORT_VERSION}.tgz"
+tar -xzf "onnxruntime-osx-arm64-${ORT_VERSION}.tgz"
+export ONNXRUNTIME_ROOT="$PWD/onnxruntime-osx-arm64-${ORT_VERSION}"
+export DYLD_LIBRARY_PATH="${ONNXRUNTIME_ROOT}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}"
+```
+
 ## Build
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DONNXRUNTIME_ROOT=/path/to/onnxruntime
 cmake --build build -j
+```
+
+Run tests after the build:
+
+```bash
+ctest --test-dir build --output-on-failure
 ```
 
 ## Run

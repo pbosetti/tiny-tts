@@ -1,0 +1,139 @@
+name: onnx-runtime-ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ORT_VERSION: 1.26.0
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            runs_on: ubuntu-24.04
+            expected_arch: x86_64
+            ort_basename: onnxruntime-linux-x64-1.26.0
+            archive_ext: tgz
+          - name: windows-x64
+            runs_on: windows-2025
+            expected_arch: AMD64
+            ort_basename: onnxruntime-win-x64-1.26.0
+            archive_ext: zip
+          - name: macos-arm64
+            runs_on: macos-14
+            expected_arch: arm64
+            ort_basename: onnxruntime-osx-arm64-1.26.0
+            archive_ext: tgz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify runner architecture
+        shell: python
+        run: |
+          import platform
+          actual = platform.machine()
+          expected = "${{ matrix.expected_arch }}"
+          if actual != expected:
+              raise SystemExit(f"Expected {expected}, got {actual}")
+          print(f"Runner architecture: {actual}")
+
+      - name: Install ONNX Runtime (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          archive="${{ matrix.ort_basename }}.${{ matrix.archive_ext }}"
+          url="https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${archive}"
+          curl -L "$url" -o "${RUNNER_TEMP}/${archive}"
+          tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}"
+          echo "ONNXRUNTIME_ROOT=${RUNNER_TEMP}/${{ matrix.ort_basename }}" >> "${GITHUB_ENV}"
+          echo "ORT_LIB_DIR=${RUNNER_TEMP}/${{ matrix.ort_basename }}/lib" >> "${GITHUB_ENV}"
+
+      - name: Install ONNX Runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = "${{ matrix.ort_basename }}.${{ matrix.archive_ext }}"
+          $url = "https://github.com/microsoft/onnxruntime/releases/download/v$env:ORT_VERSION/$archive"
+          $archivePath = Join-Path $env:RUNNER_TEMP $archive
+          Invoke-WebRequest -Uri $url -OutFile $archivePath
+          Expand-Archive -Path $archivePath -DestinationPath $env:RUNNER_TEMP -Force
+          "ONNXRUNTIME_ROOT=$(Join-Path $env:RUNNER_TEMP '${{ matrix.ort_basename }}')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ORT_LIB_DIR=$(Join-Path (Join-Path $env:RUNNER_TEMP '${{ matrix.ort_basename }}') 'lib')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Check ONNX Runtime install (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          test -f "${ONNXRUNTIME_ROOT}/include/onnxruntime_cxx_api.h"
+          test -d "${ORT_LIB_DIR}"
+          ls -1 "${ORT_LIB_DIR}"
+
+      - name: Check ONNX Runtime install (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "$env:ONNXRUNTIME_ROOT\include\onnxruntime_cxx_api.h")) { throw "Missing ONNX Runtime headers" }
+          if (-not (Test-Path "$env:ORT_LIB_DIR")) { throw "Missing ONNX Runtime lib directory" }
+          Get-ChildItem $env:ORT_LIB_DIR
+
+      - name: Configure (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DONNXRUNTIME_ROOT="${ONNXRUNTIME_ROOT}"
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake -S . -B build -DONNXRUNTIME_ROOT="$env:ONNXRUNTIME_ROOT"
+
+      - name: Build (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake --build build --parallel
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      - name: Test and check CLI (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          LD_LIBRARY_PATH: ${{ env.ORT_LIB_DIR }}
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build --output-on-failure
+          ./build/tiny-tts-cli --help
+
+      - name: Test and check CLI (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          DYLD_LIBRARY_PATH: ${{ env.ORT_LIB_DIR }}
+        run: |
+          set -euxo pipefail
+          ctest --test-dir build --output-on-failure
+          ./build/tiny-tts-cli --help
+
+      - name: Test and check CLI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:ORT_LIB_DIR;$env:PATH"
+          ctest --test-dir build --output-on-failure -C Release
+          .\build\Release\tiny-tts-cli.exe --help
